@@ -3,7 +3,6 @@ import 'dart:ui';
 
 import 'package:equatable/equatable.dart';
 import 'package:fl_chart/fl_chart.dart';
-import 'package:fl_chart/src/chart/line_chart/line_chart_helper.dart';
 import 'package:fl_chart/src/extensions/color_extension.dart';
 import 'package:fl_chart/src/extensions/gradient_extension.dart';
 import 'package:fl_chart/src/utils/lerp.dart';
@@ -61,14 +60,10 @@ class LineChartData extends AxisChartData with EquatableMixin {
     super.backgroundColor,
   }) : super(
           touchData: lineTouchData,
-          minX:
-              minX ?? LineChartHelper.calculateMaxAxisValues(lineBarsData).minX,
-          maxX:
-              maxX ?? LineChartHelper.calculateMaxAxisValues(lineBarsData).maxX,
-          minY:
-              minY ?? LineChartHelper.calculateMaxAxisValues(lineBarsData).minY,
-          maxY:
-              maxY ?? LineChartHelper.calculateMaxAxisValues(lineBarsData).maxY,
+          minX: minX ?? double.nan,
+          maxX: maxX ?? double.nan,
+          minY: minY ?? double.nan,
+          maxY: maxY ?? double.nan,
         );
 
   /// [LineChart] draws some lines in various shapes and overlaps them.
@@ -83,6 +78,9 @@ class LineChartData extends AxisChartData with EquatableMixin {
   /// You can show some tooltipIndicators (a popup with an information)
   /// on top of each [LineChartBarData.spots] using [showingTooltipIndicators],
   /// just put line indicator number and spots indices you want to show it on top of them.
+  ///
+  /// An important point is that you have to disable the default touch behaviour
+  /// to show the tooltip manually, see [LineTouchData.handleBuiltInTouches].
   final List<ShowingTooltipIndicators> showingTooltipIndicators;
 
   /// Lerps a [BaseChartData] based on [t] value, check [Tween.lerp].
@@ -796,205 +794,6 @@ class FlDotData with EquatableMixin {
       ];
 }
 
-/// This class contains the interface that all DotPainters should conform to.
-abstract class FlDotPainter with EquatableMixin {
-  const FlDotPainter();
-
-  /// This method should be overridden to draw the dot shape.
-  void draw(Canvas canvas, FlSpot spot, Offset offsetInCanvas);
-
-  /// This method should be overridden to return the size of the shape.
-  Size getSize(FlSpot spot);
-}
-
-/// This class is an implementation of a [FlDotPainter] that draws
-/// a circled shape
-class FlDotCirclePainter extends FlDotPainter {
-  /// The color of the circle is determined determined by [color],
-  /// [radius] determines the radius of the circle.
-  /// You can have a stroke line around the circle,
-  /// by setting the thickness with [strokeWidth],
-  /// and you can change the color of of the stroke with [strokeColor].
-  FlDotCirclePainter({
-    this.color = Colors.green,
-    double? radius,
-    this.strokeColor = const Color.fromRGBO(76, 175, 80, 1),
-    this.strokeWidth = 1.0,
-  }) : radius = radius ?? 4.0;
-
-  /// The fill color to use for the circle
-  Color color;
-
-  /// Customizes the radius of the circle
-  double radius;
-
-  /// The stroke color to use for the circle
-  Color strokeColor;
-
-  /// The stroke width to use for the circle
-  double strokeWidth;
-
-  /// Implementation of the parent class to draw the circle
-  @override
-  void draw(Canvas canvas, FlSpot spot, Offset offsetInCanvas) {
-    if (strokeWidth != 0.0 && strokeColor.opacity != 0.0) {
-      canvas.drawCircle(
-        offsetInCanvas,
-        radius + (strokeWidth / 2),
-        Paint()
-          ..color = strokeColor
-          ..strokeWidth = strokeWidth
-          ..style = PaintingStyle.stroke,
-      );
-    }
-    canvas.drawCircle(
-      offsetInCanvas,
-      radius,
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.fill,
-    );
-  }
-
-  /// Implementation of the parent class to get the size of the circle
-  @override
-  Size getSize(FlSpot spot) {
-    return Size(radius * 2, radius * 2);
-  }
-
-  /// Used for equality check, see [EquatableMixin].
-  @override
-  List<Object?> get props => [
-        color,
-        radius,
-        strokeColor,
-        strokeWidth,
-      ];
-}
-
-/// This class is an implementation of a [FlDotPainter] that draws
-/// a squared shape
-class FlDotSquarePainter extends FlDotPainter {
-  /// The color of the square is determined determined by [color],
-  /// [size] determines the size of the square.
-  /// You can have a stroke line around the square,
-  /// by setting the thickness with [strokeWidth],
-  /// and you can change the color of of the stroke with [strokeColor].
-  FlDotSquarePainter({
-    this.color = Colors.green,
-    this.size = 4.0,
-    this.strokeColor = const Color.fromRGBO(76, 175, 80, 1),
-    this.strokeWidth = 1.0,
-  });
-
-  /// The fill color to use for the square
-  Color color;
-
-  /// Customizes the size of the square
-  double size;
-
-  /// The stroke color to use for the square
-  Color strokeColor;
-
-  /// The stroke width to use for the square
-  double strokeWidth;
-
-  /// Implementation of the parent class to draw the square
-  @override
-  void draw(Canvas canvas, FlSpot spot, Offset offsetInCanvas) {
-    if (strokeWidth != 0.0 && strokeColor.opacity != 0.0) {
-      canvas.drawRect(
-        Rect.fromCircle(
-          center: offsetInCanvas,
-          radius: (size / 2) + (strokeWidth / 2),
-        ),
-        Paint()
-          ..color = strokeColor
-          ..strokeWidth = strokeWidth
-          ..style = PaintingStyle.stroke,
-      );
-    }
-    canvas.drawRect(
-      Rect.fromCircle(
-        center: offsetInCanvas,
-        radius: size / 2,
-      ),
-      Paint()
-        ..color = color
-        ..style = PaintingStyle.fill,
-    );
-  }
-
-  /// Implementation of the parent class to get the size of the square
-  @override
-  Size getSize(FlSpot spot) {
-    return Size(size, size);
-  }
-
-  /// Used for equality check, see [EquatableMixin].
-  @override
-  List<Object?> get props => [
-        color,
-        size,
-        strokeColor,
-        strokeWidth,
-      ];
-}
-
-/// This class is an implementation of a [FlDotPainter] that draws
-/// a cross (X mark) shape
-class FlDotCrossPainter extends FlDotPainter {
-  /// The [color] and [width] properties determines the color and thickness of the cross shape,
-  /// [size] determines the width and height of the shape.
-  FlDotCrossPainter({
-    this.color = Colors.green,
-    this.size = 8.0,
-    this.width = 2.0,
-  });
-
-  /// The fill color to use for the X mark
-  Color color;
-
-  /// Determines size (width and height) of shape.
-  double size;
-
-  /// Determines thickness of X mark.
-  double width;
-
-  /// Implementation of the parent class to draw the cross
-  @override
-  void draw(Canvas canvas, FlSpot spot, Offset offsetInCanvas) {
-    final path = Path()
-      ..moveTo(offsetInCanvas.dx, offsetInCanvas.dy)
-      ..relativeMoveTo(-size / 2, -size / 2)
-      ..relativeLineTo(size, size)
-      ..moveTo(offsetInCanvas.dx, offsetInCanvas.dy)
-      ..relativeMoveTo(size / 2, -size / 2)
-      ..relativeLineTo(-size, size);
-
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = width
-      ..color = color;
-
-    canvas.drawPath(path, paint);
-  }
-
-  /// Implementation of the parent class to get the size of the circle
-  @override
-  Size getSize(FlSpot spot) {
-    return Size(size, size);
-  }
-
-  /// Used for equality check, see [EquatableMixin].
-  @override
-  List<Object?> get props => [
-        color,
-        size,
-        width,
-      ];
-}
-
 /// It determines showing or hiding [FlDotData] on the spots.
 ///
 /// It gives you the checking [FlSpot] and you should decide to
@@ -1006,17 +805,21 @@ bool showAllDots(FlSpot spot, LineChartBarData barData) {
   return true;
 }
 
+enum LabelDirection { horizontal, vertical }
+
 /// Shows a text label
 abstract class FlLineLabel with EquatableMixin {
   /// Draws a title on the line, align it with [alignment] over the line,
   /// applies [padding] for spaces, and applies [style] for changing color,
   /// size, ... of the text.
   /// [show] determines showing label or not.
+  /// [direction] determines if the direction of the text should be horizontal or vertical.
   const FlLineLabel({
     required this.show,
     required this.padding,
     required this.style,
     required this.alignment,
+    required this.direction,
   });
 
   /// Determines showing label or not.
@@ -1031,6 +834,9 @@ abstract class FlLineLabel with EquatableMixin {
   /// Aligns the text on the line.
   final Alignment alignment;
 
+  /// Determines the direction of the text.
+  final LabelDirection direction;
+
   /// Used for equality check, see [EquatableMixin].
   @override
   List<Object?> get props => [
@@ -1038,12 +844,13 @@ abstract class FlLineLabel with EquatableMixin {
         padding,
         style,
         alignment,
+        direction,
       ];
 }
 
 /// Holds data to handle touch events, and touch responses in the [LineChart].
 ///
-/// There is a touch flow, explained [here](https://github.com/imaNNeo/fl_chart/blob/master/repo_files/documentations/handle_touches.md)
+/// There is a touch flow, explained [here](https://github.com/imaNNeo/fl_chart/blob/main/repo_files/documentations/handle_touches.md)
 /// in a simple way, each chart's renderer captures the touch events, and passes the pointerEvent
 /// to the painter, and gets touched spot, and wraps it into a concrete [LineTouchResponse].
 class LineTouchData extends FlTouchData<LineTouchResponse> with EquatableMixin {
@@ -1195,7 +1002,7 @@ List<TouchedSpotIndicatorData> defaultTouchedIndicators(
       lineColor = _defaultGetDotColor(barData.spots[index], 0, barData);
     }
     const lineStrokeWidth = 4.0;
-    final flLine = FlLine(color: lineColor!, strokeWidth: lineStrokeWidth);
+    final flLine = FlLine(color: lineColor, strokeWidth: lineStrokeWidth);
 
     var dotSize = 10.0;
     if (barData.dotData.show) {
@@ -1226,7 +1033,7 @@ class LineTouchTooltipData with EquatableMixin {
   /// if [LineTouchData.handleBuiltInTouches] is true,
   /// [LineChart] shows a tooltip popup on top of spots automatically when touch happens,
   /// otherwise you can show it manually using [LineChartData.showingTooltipIndicators].
-  /// Tooltip shows on top of spots, with [tooltipBgColor] as a background color,
+  /// Tooltip shows on top of spots, with [getTooltipColor] as a background color,
   /// and you can set corner radius using [tooltipRoundedRadius].
   /// If you want to have a padding inside the tooltip, fill [tooltipPadding],
   /// or If you want to have a bottom margin, set [tooltipMargin].
@@ -1237,7 +1044,6 @@ class LineTouchTooltipData with EquatableMixin {
   /// you can set [fitInsideHorizontally] true to force it to shift inside the chart horizontally,
   /// also you can set [fitInsideVertically] true to force it to shift inside the chart vertically.
   const LineTouchTooltipData({
-    this.tooltipBgColor = const Color.fromRGBO(96, 125, 139, 1),
     this.tooltipRoundedRadius = 4,
     this.tooltipPadding =
         const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1246,15 +1052,13 @@ class LineTouchTooltipData with EquatableMixin {
     this.tooltipHorizontalOffset = 0,
     this.maxContentWidth = 120,
     this.getTooltipItems = defaultLineTooltipItem,
+    this.getTooltipColor = defaultLineTooltipColor,
     this.fitInsideHorizontally = false,
     this.fitInsideVertically = false,
     this.showOnTopOfTheChartBoxArea = false,
     this.rotateAngle = 0.0,
     this.tooltipBorder = BorderSide.none,
   });
-
-  /// The tooltip background color.
-  final Color tooltipBgColor;
 
   /// Sets a rounded radius for the tooltip.
   final double tooltipRoundedRadius;
@@ -1292,10 +1096,12 @@ class LineTouchTooltipData with EquatableMixin {
   /// The tooltip border color.
   final BorderSide tooltipBorder;
 
+  // /// Retrieves data for setting background color of the tooltip.
+  final GetLineTooltipColor getTooltipColor;
+
   /// Used for equality check, see [EquatableMixin].
   @override
   List<Object?> get props => [
-        tooltipBgColor,
         tooltipRoundedRadius,
         tooltipPadding,
         tooltipMargin,
@@ -1308,6 +1114,7 @@ class LineTouchTooltipData with EquatableMixin {
         showOnTopOfTheChartBoxArea,
         rotateAngle,
         tooltipBorder,
+        getTooltipColor,
       ];
 }
 
@@ -1334,6 +1141,21 @@ List<LineTooltipItem> defaultLineTooltipItem(List<LineBarSpot> touchedSpots) {
     );
     return LineTooltipItem(touchedSpot.y.toString(), textStyle);
   }).toList();
+}
+
+//// Provides a [Color] to show different background color for each touched spot
+///
+/// You can override [LineTouchTooltipData.getTooltipColor], it gives you
+/// [touchedSpot] object that touch happened on, then you should and pass your custom [Color] list
+/// (length should be equal to the [touchedSpots.length]), to set background color
+/// of tooltip popup.
+typedef GetLineTooltipColor = Color Function(
+  LineBarSpot touchedSpot,
+);
+
+/// Default implementation for [LineTouchTooltipData.getTooltipColor].
+Color defaultLineTooltipColor(LineBarSpot touchedSpot) {
+  return Colors.blueGrey.darken(15);
 }
 
 /// Represent a targeted spot inside a line bar.

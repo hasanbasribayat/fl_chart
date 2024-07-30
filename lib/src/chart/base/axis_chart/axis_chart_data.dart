@@ -458,7 +458,8 @@ class FlTitlesData with EquatableMixin {
 }
 
 /// Represents a conceptual position in cartesian (axis based) space.
-class FlSpot with EquatableMixin {
+@immutable
+class FlSpot {
   /// [x] determines cartesian (axis based) horizontally position
   /// 0 means most left point of the chart
   ///
@@ -496,13 +497,6 @@ class FlSpot with EquatableMixin {
   /// Determines if [x] and [y] is not null.
   bool isNotNull() => !isNull();
 
-  /// Used for equality check, see [EquatableMixin].
-  @override
-  List<Object?> get props => [
-        x,
-        y,
-      ];
-
   /// Lerps a [FlSpot] based on [t] value, check [Tween.lerp].
   static FlSpot lerp(FlSpot a, FlSpot b, double t) {
     if (a == FlSpot.nullSpot) {
@@ -518,6 +512,25 @@ class FlSpot with EquatableMixin {
       lerpDouble(a.y, b.y, t)!,
     );
   }
+
+  /// Two [FlSpot] are equal if their [x] and [y] are equal.
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    if (other is! FlSpot) {
+      return false;
+    }
+
+    if (x.isNaN && y.isNaN && other.x.isNaN && other.y.isNaN) {
+      return true;
+    }
+
+    return other.x == x && other.y == y;
+  }
+
+  /// Override hashCode
+  @override
+  int get hashCode => x.hashCode ^ y.hashCode;
 }
 
 /// Responsible to hold grid data,
@@ -683,13 +696,18 @@ class FlLine with EquatableMixin {
   /// For example, the array `[5, 10]` would result in dashes 5 pixels long
   /// followed by blank spaces 10 pixels long.
   const FlLine({
-    this.color = Colors.black,
+    Color? color,
+    this.gradient,
     this.strokeWidth = 2,
     this.dashArray,
-  });
+  }) : color = color ??
+            ((color == null && gradient == null) ? Colors.black : null);
 
   /// Defines color of the line.
-  final Color color;
+  final Color? color;
+
+  /// Defines the gradient of the line.
+  final Gradient? gradient;
 
   /// Defines thickness of the line.
   final double strokeWidth;
@@ -704,7 +722,8 @@ class FlLine with EquatableMixin {
   /// Lerps a [FlLine] based on [t] value, check [Tween.lerp].
   static FlLine lerp(FlLine a, FlLine b, double t) {
     return FlLine(
-      color: Color.lerp(a.color, b.color, t)!,
+      color: Color.lerp(a.color, b.color, t),
+      gradient: Gradient.lerp(a.gradient, b.gradient, t),
       strokeWidth: lerpDouble(a.strokeWidth, b.strokeWidth, t)!,
       dashArray: lerpIntList(a.dashArray, b.dashArray, t),
     );
@@ -714,11 +733,13 @@ class FlLine with EquatableMixin {
   /// and replaces provided values.
   FlLine copyWith({
     Color? color,
+    Gradient? gradient,
     double? strokeWidth,
     List<int>? dashArray,
   }) {
     return FlLine(
       color: color ?? this.color,
+      gradient: gradient ?? this.gradient,
       strokeWidth: strokeWidth ?? this.strokeWidth,
       dashArray: dashArray ?? this.dashArray,
     );
@@ -728,6 +749,7 @@ class FlLine with EquatableMixin {
   @override
   List<Object?> get props => [
         color,
+        gradient,
         strokeWidth,
         dashArray,
       ];
@@ -973,17 +995,14 @@ class HorizontalLine extends FlLine with EquatableMixin {
   HorizontalLine({
     required this.y,
     HorizontalLineLabel? label,
-    Color? color,
-    double? strokeWidth,
+    super.color,
+    super.gradient,
+    super.strokeWidth,
     super.dashArray,
     this.image,
     this.sizedPicture,
     this.strokeCap = StrokeCap.butt,
-  })  : label = label ?? HorizontalLineLabel(),
-        super(
-          color: color ?? Colors.black,
-          strokeWidth: strokeWidth ?? 2,
-        );
+  }) : label = label ?? HorizontalLineLabel();
 
   /// Draws from left to right of the chart using the [y] value.
   final double y;
@@ -1007,7 +1026,8 @@ class HorizontalLine extends FlLine with EquatableMixin {
       y: lerpDouble(a.y, b.y, t)!,
       label: HorizontalLineLabel.lerp(a.label, b.label, t),
       color: Color.lerp(a.color, b.color, t),
-      strokeWidth: lerpDouble(a.strokeWidth, b.strokeWidth, t),
+      gradient: Gradient.lerp(a.gradient, b.gradient, t),
+      strokeWidth: lerpDouble(a.strokeWidth, b.strokeWidth, t)!,
       dashArray: lerpIntList(a.dashArray, b.dashArray, t),
       image: b.image,
       sizedPicture: b.sizedPicture,
@@ -1047,17 +1067,14 @@ class VerticalLine extends FlLine with EquatableMixin {
   VerticalLine({
     required this.x,
     VerticalLineLabel? label,
-    Color? color,
-    double? strokeWidth,
+    super.color,
+    super.gradient,
+    super.strokeWidth,
     super.dashArray,
     this.image,
     this.sizedPicture,
     this.strokeCap = StrokeCap.butt,
-  })  : label = label ?? VerticalLineLabel(),
-        super(
-          color: color ?? Colors.black,
-          strokeWidth: strokeWidth ?? 2,
-        );
+  }) : label = label ?? VerticalLineLabel();
 
   /// Draws from bottom to top of the chart using the [x] value.
   final double x;
@@ -1081,7 +1098,8 @@ class VerticalLine extends FlLine with EquatableMixin {
       x: lerpDouble(a.x, b.x, t)!,
       label: VerticalLineLabel.lerp(a.label, b.label, t),
       color: Color.lerp(a.color, b.color, t),
-      strokeWidth: lerpDouble(a.strokeWidth, b.strokeWidth, t),
+      gradient: Gradient.lerp(a.gradient, b.gradient, t),
+      strokeWidth: lerpDouble(a.strokeWidth, b.strokeWidth, t)!,
       dashArray: lerpIntList(a.dashArray, b.dashArray, t),
       image: b.image,
       sizedPicture: b.sizedPicture,
@@ -1134,19 +1152,16 @@ class HorizontalLineLabel extends FlLineLabel with EquatableMixin {
   /// size, ... of the text.
   /// Drawing text will retrieve through [labelResolver],
   /// you can override it with your custom data.
-  /// /// [show] determines showing label or not.
+  /// [show] determines showing label or not.
+  /// [direction] determines if the direction of the text should be horizontal or vertical.
   HorizontalLineLabel({
-    EdgeInsets? padding,
+    super.padding = const EdgeInsets.all(6),
     super.style,
-    Alignment? alignment,
+    super.alignment = Alignment.topLeft,
     super.show = false,
-    String Function(HorizontalLine)? labelResolver,
-  })  : labelResolver =
-            labelResolver ?? HorizontalLineLabel.defaultLineLabelResolver,
-        super(
-          padding: padding ?? const EdgeInsets.all(6),
-          alignment: alignment ?? Alignment.topLeft,
-        );
+    super.direction = LabelDirection.horizontal,
+    this.labelResolver = HorizontalLineLabel.defaultLineLabelResolver,
+  });
 
   /// Resolves a label for showing.
   final String Function(HorizontalLine) labelResolver;
@@ -1163,11 +1178,12 @@ class HorizontalLineLabel extends FlLineLabel with EquatableMixin {
   ) {
     return HorizontalLineLabel(
       padding:
-          EdgeInsets.lerp(a.padding as EdgeInsets, b.padding as EdgeInsets, t),
+          EdgeInsets.lerp(a.padding as EdgeInsets, b.padding as EdgeInsets, t)!,
       style: TextStyle.lerp(a.style, b.style, t),
-      alignment: Alignment.lerp(a.alignment, b.alignment, t),
+      alignment: Alignment.lerp(a.alignment, b.alignment, t)!,
       labelResolver: b.labelResolver,
       show: b.show,
+      direction: b.direction,
     );
   }
 
@@ -1179,6 +1195,7 @@ class HorizontalLineLabel extends FlLineLabel with EquatableMixin {
         padding,
         style,
         alignment,
+        direction,
       ];
 }
 
@@ -1190,25 +1207,19 @@ class VerticalLineLabel extends FlLineLabel with EquatableMixin {
   /// Drawing text will retrieve through [labelResolver],
   /// you can override it with your custom data.
   /// [show] determines showing label or not.
+  /// [direction] determines if the direction of the text should be horizontal or vertical.
   VerticalLineLabel({
-    EdgeInsets? padding,
-    TextStyle? style,
-    Alignment? alignment,
-    bool? show,
-    String Function(VerticalLine)? labelResolver,
-  })  : labelResolver =
-            labelResolver ?? VerticalLineLabel.defaultLineLabelResolver,
-        super(
-          show: show ?? false,
-          padding: padding ?? const EdgeInsets.all(6),
-          style: style ??
-              const TextStyle(
-                color: Colors.black,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-              ),
-          alignment: alignment ?? Alignment.bottomRight,
-        );
+    super.padding = const EdgeInsets.all(6),
+    super.style = const TextStyle(
+      color: Colors.black,
+      fontWeight: FontWeight.bold,
+      fontSize: 14,
+    ),
+    super.alignment = Alignment.bottomRight,
+    super.show = false,
+    super.direction = LabelDirection.horizontal,
+    this.labelResolver = VerticalLineLabel.defaultLineLabelResolver,
+  });
 
   /// Resolves a label for showing.
   final String Function(VerticalLine) labelResolver;
@@ -1225,11 +1236,12 @@ class VerticalLineLabel extends FlLineLabel with EquatableMixin {
   ) {
     return VerticalLineLabel(
       padding:
-          EdgeInsets.lerp(a.padding as EdgeInsets, b.padding as EdgeInsets, t),
+          EdgeInsets.lerp(a.padding as EdgeInsets, b.padding as EdgeInsets, t)!,
       style: TextStyle.lerp(a.style, b.style, t),
-      alignment: Alignment.lerp(a.alignment, b.alignment, t),
+      alignment: Alignment.lerp(a.alignment, b.alignment, t)!,
       labelResolver: b.labelResolver,
       show: b.show,
+      direction: b.direction,
     );
   }
 
@@ -1241,13 +1253,14 @@ class VerticalLineLabel extends FlLineLabel with EquatableMixin {
         padding,
         style,
         alignment,
+        direction,
       ];
 }
 
 /// Holds data for showing a vector image inside the chart.
 ///
 /// for example:
-/// ```
+/// ```dart
 /// Future<SizedPicture> loadSvg() async {
 ///    const String rawSvg = 'your svg string';
 ///    final DrawableRoot svgRoot = await svg.fromSvgString(rawSvg, rawSvg);
@@ -1259,7 +1272,7 @@ class SizedPicture with EquatableMixin {
   /// [picture] is the showing image,
   /// it can retrieve from a svg icon,
   /// for example:
-  /// ```
+  /// ```dart
   ///    const String rawSvg = 'your svg string';
   ///    final DrawableRoot svgRoot = await svg.fromSvgString(rawSvg, rawSvg);
   ///    final picture = svgRoot.toPicture()
@@ -1320,5 +1333,310 @@ class ExtraLinesData with EquatableMixin {
         horizontalLines,
         verticalLines,
         extraLinesOnTop,
+      ];
+}
+
+/// This class contains the interface that all DotPainters should conform to.
+abstract class FlDotPainter with EquatableMixin {
+  const FlDotPainter();
+
+  /// This method should be overridden to draw the dot shape.
+  void draw(Canvas canvas, FlSpot spot, Offset offsetInCanvas);
+
+  /// This method should be overridden to return the size of the shape.
+  Size getSize(FlSpot spot);
+
+  /// Used to show default UIs, for example [defaultScatterTooltipItem]
+  Color get mainColor;
+
+  FlDotPainter lerp(FlDotPainter a, FlDotPainter b, double t);
+
+  /// Used to implement touch behaviour of this dot, for example,
+  /// it behaves like a square of [getSize]
+  /// Check [FlDotCirclePainter.hitTest] for an example of an implementation
+  bool hitTest(
+    FlSpot spot,
+    Offset touched,
+    Offset center,
+    double extraThreshold,
+  ) {
+    final size = getSize(spot);
+    final spotRect = Rect.fromCenter(
+      center: center,
+      width: size.width,
+      height: size.height,
+    );
+    final thresholdRect = spotRect.inflate(extraThreshold);
+    return thresholdRect.contains(touched);
+  }
+}
+
+/// This class is an implementation of a [FlDotPainter] that draws
+/// a circled shape
+class FlDotCirclePainter extends FlDotPainter {
+  /// The color of the circle is determined determined by [color],
+  /// [radius] determines the radius of the circle.
+  /// You can have a stroke line around the circle,
+  /// by setting the thickness with [strokeWidth],
+  /// and you can change the color of of the stroke with [strokeColor].
+  FlDotCirclePainter({
+    this.color = Colors.green,
+    double? radius,
+    this.strokeColor = const Color.fromRGBO(76, 175, 80, 1),
+    this.strokeWidth = 0.0,
+  }) : radius = radius ?? 4.0;
+
+  /// The fill color to use for the circle
+  Color color;
+
+  /// Customizes the radius of the circle
+  double radius;
+
+  /// The stroke color to use for the circle
+  Color strokeColor;
+
+  /// The stroke width to use for the circle
+  double strokeWidth;
+
+  /// Implementation of the parent class to draw the circle
+  @override
+  void draw(Canvas canvas, FlSpot spot, Offset offsetInCanvas) {
+    if (strokeWidth != 0.0 && strokeColor.opacity != 0.0) {
+      canvas.drawCircle(
+        offsetInCanvas,
+        radius + (strokeWidth / 2),
+        Paint()
+          ..color = strokeColor
+          ..strokeWidth = strokeWidth
+          ..style = PaintingStyle.stroke,
+      );
+    }
+    canvas.drawCircle(
+      offsetInCanvas,
+      radius,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.fill,
+    );
+  }
+
+  /// Implementation of the parent class to get the size of the circle
+  @override
+  Size getSize(FlSpot spot) {
+    return Size(radius * 2, radius * 2);
+  }
+
+  @override
+  Color get mainColor => color;
+
+  FlDotCirclePainter _lerp(
+    FlDotCirclePainter a,
+    FlDotCirclePainter b,
+    double t,
+  ) {
+    return FlDotCirclePainter(
+      color: Color.lerp(a.color, b.color, t)!,
+      radius: lerpDouble(a.radius, b.radius, t),
+      strokeColor: Color.lerp(a.strokeColor, b.strokeColor, t)!,
+      strokeWidth: lerpDouble(a.strokeWidth, b.strokeWidth, t)!,
+    );
+  }
+
+  @override
+  FlDotPainter lerp(FlDotPainter a, FlDotPainter b, double t) {
+    if (a is! FlDotCirclePainter || b is! FlDotCirclePainter) {
+      return b;
+    }
+    return _lerp(a, b, t);
+  }
+
+  @override
+  bool hitTest(
+    FlSpot spot,
+    Offset touched,
+    Offset center,
+    double extraThreshold,
+  ) {
+    final distance = (touched - center).distance.abs();
+    return distance < radius + extraThreshold;
+  }
+
+  /// Used for equality check, see [EquatableMixin].
+  @override
+  List<Object?> get props => [
+        color,
+        radius,
+        strokeColor,
+        strokeWidth,
+      ];
+}
+
+/// This class is an implementation of a [FlDotPainter] that draws
+/// a squared shape
+class FlDotSquarePainter extends FlDotPainter {
+  /// The color of the square is determined determined by [color],
+  /// [size] determines the size of the square.
+  /// You can have a stroke line around the square,
+  /// by setting the thickness with [strokeWidth],
+  /// and you can change the color of of the stroke with [strokeColor].
+  FlDotSquarePainter({
+    this.color = Colors.green,
+    this.size = 4.0,
+    this.strokeColor = const Color.fromRGBO(76, 175, 80, 1),
+    this.strokeWidth = 1.0,
+  });
+
+  /// The fill color to use for the square
+  Color color;
+
+  /// Customizes the size of the square
+  double size;
+
+  /// The stroke color to use for the square
+  Color strokeColor;
+
+  /// The stroke width to use for the square
+  double strokeWidth;
+
+  /// Implementation of the parent class to draw the square
+  @override
+  void draw(Canvas canvas, FlSpot spot, Offset offsetInCanvas) {
+    if (strokeWidth != 0.0 && strokeColor.opacity != 0.0) {
+      canvas.drawRect(
+        Rect.fromCircle(
+          center: offsetInCanvas,
+          radius: (size / 2) + (strokeWidth / 2),
+        ),
+        Paint()
+          ..color = strokeColor
+          ..strokeWidth = strokeWidth
+          ..style = PaintingStyle.stroke,
+      );
+    }
+    canvas.drawRect(
+      Rect.fromCircle(
+        center: offsetInCanvas,
+        radius: size / 2,
+      ),
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.fill,
+    );
+  }
+
+  /// Implementation of the parent class to get the size of the square
+  @override
+  Size getSize(FlSpot spot) {
+    return Size(size, size);
+  }
+
+  @override
+  Color get mainColor => color;
+
+  /// Used for equality check, see [EquatableMixin].
+  @override
+  List<Object?> get props => [
+        color,
+        size,
+        strokeColor,
+        strokeWidth,
+      ];
+
+  FlDotSquarePainter _lerp(
+    FlDotSquarePainter a,
+    FlDotSquarePainter b,
+    double t,
+  ) {
+    return FlDotSquarePainter(
+      color: Color.lerp(a.color, b.color, t)!,
+      size: lerpDouble(a.size, b.size, t)!,
+      strokeColor: Color.lerp(a.strokeColor, b.strokeColor, t)!,
+      strokeWidth: lerpDouble(a.strokeWidth, b.strokeWidth, t)!,
+    );
+  }
+
+  @override
+  FlDotPainter lerp(FlDotPainter a, FlDotPainter b, double t) {
+    if (a is! FlDotSquarePainter || b is! FlDotSquarePainter) {
+      return b;
+    }
+    return _lerp(a, b, t);
+  }
+}
+
+/// This class is an implementation of a [FlDotPainter] that draws
+/// a cross (X mark) shape
+class FlDotCrossPainter extends FlDotPainter {
+  /// The [color] and [width] properties determines the color and thickness of the cross shape,
+  /// [size] determines the width and height of the shape.
+  FlDotCrossPainter({
+    this.color = Colors.green,
+    this.size = 8.0,
+    this.width = 2.0,
+  });
+
+  /// The fill color to use for the X mark
+  Color color;
+
+  /// Determines size (width and height) of shape.
+  double size;
+
+  /// Determines thickness of X mark.
+  double width;
+
+  /// Implementation of the parent class to draw the cross
+  @override
+  void draw(Canvas canvas, FlSpot spot, Offset offsetInCanvas) {
+    final path = Path()
+      ..moveTo(offsetInCanvas.dx, offsetInCanvas.dy)
+      ..relativeMoveTo(-size / 2, -size / 2)
+      ..relativeLineTo(size, size)
+      ..moveTo(offsetInCanvas.dx, offsetInCanvas.dy)
+      ..relativeMoveTo(size / 2, -size / 2)
+      ..relativeLineTo(-size, size);
+
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = width
+      ..color = color;
+
+    canvas.drawPath(path, paint);
+  }
+
+  /// Implementation of the parent class to get the size of the circle
+  @override
+  Size getSize(FlSpot spot) {
+    return Size(size, size);
+  }
+
+  @override
+  Color get mainColor => color;
+
+  FlDotCrossPainter _lerp(
+    FlDotCrossPainter a,
+    FlDotCrossPainter b,
+    double t,
+  ) {
+    return FlDotCrossPainter(
+      color: Color.lerp(a.color, b.color, t)!,
+      size: lerpDouble(a.size, b.size, t)!,
+      width: lerpDouble(a.width, b.width, t)!,
+    );
+  }
+
+  @override
+  FlDotPainter lerp(FlDotPainter a, FlDotPainter b, double t) {
+    if (a is! FlDotCrossPainter || b is! FlDotCrossPainter) {
+      return b;
+    }
+    return _lerp(a, b, t);
+  }
+
+  /// Used for equality check, see [EquatableMixin].
+  @override
+  List<Object?> get props => [
+        color,
+        size,
+        width,
       ];
 }

@@ -45,17 +45,29 @@ void main() {
                   0,
                   0,
                   show: false,
-                  radius: 33,
-                  color: Colors.yellow,
+                  dotPainter: FlDotCirclePainter(
+                    radius: 33,
+                    color: Colors.yellow,
+                  ),
                 ),
                 ScatterSpot(
                   2,
                   2,
                   show: false,
-                  radius: 11,
-                  color: Colors.purple,
+                  dotPainter: FlDotCirclePainter(
+                    radius: 11,
+                    color: Colors.purple,
+                  ),
                 ),
-                ScatterSpot(1, 2, show: false, radius: 11, color: Colors.white),
+                ScatterSpot(
+                  1,
+                  2,
+                  show: false,
+                  dotPainter: FlDotCirclePainter(
+                    radius: 11,
+                    color: Colors.white,
+                  ),
+                ),
               ],
             ),
         true,
@@ -68,17 +80,29 @@ void main() {
                   2,
                   2,
                   show: false,
-                  radius: 11,
-                  color: Colors.purple,
+                  dotPainter: FlDotCirclePainter(
+                    radius: 11,
+                    color: Colors.purple,
+                  ),
                 ),
                 ScatterSpot(
                   0,
                   0,
                   show: false,
-                  radius: 33,
-                  color: Colors.yellow,
+                  dotPainter: FlDotCirclePainter(
+                    radius: 33,
+                    color: Colors.yellow,
+                  ),
                 ),
-                ScatterSpot(1, 2, show: false, radius: 11, color: Colors.white),
+                ScatterSpot(
+                  1,
+                  2,
+                  show: false,
+                  dotPainter: FlDotCirclePainter(
+                    radius: 11,
+                    color: Colors.white,
+                  ),
+                ),
               ],
             ),
         false,
@@ -362,7 +386,7 @@ void main() {
       final sample = ScatterTouchData(
         touchTooltipData: ScatterTouchTooltipData(
           maxContentWidth: 2,
-          tooltipBgColor: Colors.red,
+          getTooltipColor: scatterChartGetTooltipRedColor,
           tooltipPadding: const EdgeInsets.all(11),
         ),
         handleBuiltInTouches: false,
@@ -372,7 +396,7 @@ void main() {
       final sampleClone = ScatterTouchData(
         touchTooltipData: ScatterTouchTooltipData(
           maxContentWidth: 2,
-          tooltipBgColor: Colors.red,
+          getTooltipColor: scatterChartGetTooltipRedColor,
           tooltipPadding: const EdgeInsets.all(11),
         ),
         handleBuiltInTouches: false,
